@@ -13,23 +13,25 @@ from dotenv import load_dotenv
 
 import asyncio
 import os
+import json
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN', 'your_bot_token_here')
-SOURCE_CHANNEL_ID = int(os.getenv('SOURCE_CHANNEL_ID', '-1001234567890'))
-TARGET_CHANNEL_ID = int(os.getenv('TARGET_CHANNEL_ID', '-1009876543210'))
+SOURCE_TO_TARGETS_FILE = os.getenv('SOURCE_TO_TARGETS_FILE')
+SOURCE_TO_TARGETS = None
+
+with open(SOURCE_TO_TARGETS_FILE) as input_mapping:
+    SOURCE_TO_TARGETS = json.load(input_mapping)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 @dp.channel_post()
 async def forward_post(message: types.Message):
-    if message.chat.id == SOURCE_CHANNEL_ID:
-        await bot.forward_message(
-            chat_id=TARGET_CHANNEL_ID,
-            from_chat_id=message.chat.id,
-            message_id=message.message_id
-        )
+    for forward in SOURCE_TO_TARGETS:
+        if message.chat.id == forward["from"]:
+            for to in forward["to"]:
+                await message.forward(to)
 
 async def main():
     await dp.start_polling(bot)
